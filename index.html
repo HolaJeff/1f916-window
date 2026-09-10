@@ -4,442 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>1F916 — a window</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #0d0f1a;
-            color: #8a91b4;
-            font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
-            font-size: 12px;
-            user-select: none;
-        }
-        canvas {
-            display: block;
-            background: radial-gradient(circle at center, #121422 0%, #0d0f1a 100%);
-        }
-        .hud {
-            position: absolute;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .hud-top-left { top: 20px; left: 20px; }
-        .hud-top-right { top: 20px; right: 20px; pointer-events: auto; }
-        .hud-bottom-left { bottom: 20px; left: 20px; max-width: 300px; opacity: 0.6; font-size: 10px; }
-        .hud-bottom-center { bottom: 20px; left: 50%; transform: translateX(-50%); pointer-events: auto; opacity: 0.65; white-space: nowrap; }
-        .hud-bottom-right { bottom: 20px; right: 20px; opacity: 0.4; }
-        
-        .title { color: #e6e9ff; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
-        .stats { line-height: 1.6; }
-        
-        #legend {
-            background: rgba(13, 15, 26, 0.8);
-            border: 1px solid rgba(138, 145, 180, 0.2);
-            padding: 10px;
-            border-radius: 4px;
-            min-width: 140px;
-        }
-        .legend-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 4px;
-            cursor: pointer;
-            transition: opacity 0.15s;
-        }
-        .legend-row:hover { color: #e6e9ff; }
-        .swatch {
-            width: 8px;
-            height: 8px;
-            margin-right: 8px;
-            border-radius: 1px;
-            flex: none;
-        }
-        .legend-count { margin-left: auto; opacity: 0.6; padding-left: 12px; }
-        .legend-row.filtered { opacity: 0.3; }
-        .legend-row.active-filter { color: #e6e9ff; }
-        .legend-row.active-filter span:first-of-type::after { content: " \25CF"; font-size: 7px; vertical-align: middle; }
-
-        #tooltip {
-            position: fixed;
-            background: rgba(13, 15, 26, 0.95);
-            border: 1px solid rgba(138, 145, 180, 0.4);
-            padding: 8px 12px;
-            border-radius: 4px;
-            pointer-events: none;
-            display: none;
-            z-index: 100;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            color: #e6e9ff;
-        }
-        #tooltip .tt-title { color: #e6e9ff; margin-bottom: 4px; max-width: 240px; }
-        #tooltip .tt-meta { color: #8a91b4; font-size: 10px; line-height: 1.5; }
-        .live-dot {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            margin-right: 6px;
-            border-radius: 50%;
-            background: #9ece6a;
-            box-shadow: 0 0 8px rgba(158, 206, 106, 0.75);
-            animation: livePulse 1.4s ease-in-out infinite;
-            vertical-align: 1px;
-        }
-        @keyframes livePulse {
-            0%, 100% { opacity: 0.45; transform: scale(0.75); }
-            50% { opacity: 1; transform: scale(1); }
-        }
-
-        #office-overlay {
-            position: fixed;
-            inset: 0;
-            display: none;
-            z-index: 80;
-            background: rgba(4, 6, 14, 0.48);
-            pointer-events: auto;
-            perspective: 1000px;
-        }
-        #office-overlay .office-panel {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            width: min(92vw, 1100px);
-            height: min(86vh, 700px);
-            overflow: hidden;
-            background: #151829;
-            border: 1px solid rgba(122, 162, 247, 0.28);
-            border-radius: 10px;
-            box-shadow: 0 28px 90px rgba(0,0,0,0.72), inset 0 0 80px rgba(13,15,26,0.42);
-            color: #c0caf5;
-            user-select: text;
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.96);
-            transition: opacity 160ms ease-out, transform 160ms ease-out;
-        }
-        #office-overlay .office-panel.office-open {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-        #office-overlay .office-close {
-            position: absolute;
-            top: 14px;
-            right: 20px;
-            z-index: 30;
-            border: 1px solid rgba(224,175,104,0.45);
-            background: rgba(13,15,26,0.78);
-            color: #e6e9ff;
-            font-family: inherit;
-            cursor: pointer;
-            padding: 3px 8px;
-            letter-spacing: 0.06em;
-        }
-        #office-overlay .room-back-wall {
-            position: absolute;
-            inset: 0 0 12% 0;
-            background:
-                radial-gradient(circle at 35% 62%, rgba(240,230,210,0.045), transparent 35%),
-                linear-gradient(180deg, #171a2c, #121523 76%, #0d0f1a);
-            border-bottom: 1px solid rgba(240,230,210,0.10);
-        }
-        #office-overlay .room-floor {
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 12%;
-            background:
-                radial-gradient(ellipse at 42% 0%, rgba(240,230,210,0.10), transparent 54%),
-                linear-gradient(180deg, #0a0c14, #070913);
-            border-top: 1px solid rgba(138,145,180,0.12);
-        }
-        #office-overlay .room-window-strip {
-            position: absolute;
-            z-index: 2;
-            left: 8%;
-            right: 12%;
-            top: 42px;
-            height: 31%;
-            overflow: hidden;
-            border: 1px solid rgba(122,162,247,0.26);
-            background: linear-gradient(180deg, rgba(8,10,22,0.78), rgba(12,18,34,0.92));
-            box-shadow: inset 0 0 36px rgba(122,162,247,0.08), 0 20px 60px rgba(0,0,0,0.22);
-        }
-        #office-overlay .room-glass { position: absolute; inset: 0; background: linear-gradient(120deg, rgba(122,162,247,0.08), transparent 38%, rgba(240,230,210,0.05)); }
-        #office-overlay .city-building { position: absolute; bottom: 0; width: 20%; background: rgba(4,6,14,0.72); border-top: 1px solid rgba(122,162,247,0.10); }
-        #office-overlay .city-building.b1 { left: 6%; height: 50%; }
-        #office-overlay .city-building.b2 { left: 39%; height: 68%; width: 16%; }
-        #office-overlay .city-building.b3 { right: 11%; height: 43%; width: 24%; }
-        #office-overlay .city-light { position: absolute; width: 5px; height: 8px; border-radius: 1px; box-shadow: 0 0 10px currentColor; }
-        #office-overlay .moon-disc { position: absolute; right: 8%; top: 10%; width: 24px; height: 24px; border-radius: 50%; background: rgba(240,230,210,0.38); box-shadow: 0 0 22px rgba(240,230,210,0.16); }
-        #office-overlay .window-mullion { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(138,145,180,0.22); }
-        #office-overlay .window-mullion.m1 { left: 18%; } #office-overlay .window-mullion.m2 { left: 36%; } #office-overlay .window-mullion.m3 { left: 54%; } #office-overlay .window-mullion.m4 { left: 72%; } #office-overlay .window-mullion.m5 { left: 90%; }
-        #office-overlay .light-cone { position: absolute; z-index: 3; top: 0; width: 34%; height: 76%; pointer-events: none; opacity: 0.55; background: conic-gradient(from 160deg at 50% 0%, transparent, rgba(240,230,210,0.035), transparent 32deg); }
-        #office-overlay .cone-a { left: 4%; } #office-overlay .cone-b { left: 34%; } #office-overlay .cone-c { right: 5%; }
-        #office-overlay .office-door {
-            position: absolute;
-            z-index: 25;
-            right: 0;
-            bottom: 12%;
-            width: 74px;
-            height: 58%;
-            border: 1px solid rgba(138,145,180,0.22);
-            border-right: 0;
-            background: linear-gradient(90deg, rgba(9,11,20,0.92), rgba(16,19,30,0.98));
-            color: #9ece6a;
-            font-family: inherit;
-            cursor: pointer;
-            box-shadow: inset 8px 0 28px rgba(0,0,0,0.35);
-        }
-        #office-overlay .office-door:hover { filter: brightness(1.18); }
-        #office-overlay .door-exit-slit { position: absolute; left: 0; top: 0; bottom: 0; width: 8px; background: linear-gradient(180deg, rgba(158,206,106,0.10), rgba(158,206,106,0.55), rgba(158,206,106,0.12)); box-shadow: 0 0 22px rgba(158,206,106,0.42); }
-        #office-overlay .door-label { position: absolute; top: 16px; left: 24px; font-size: 9px; letter-spacing: 0.18em; text-shadow: 0 0 8px rgba(158,206,106,0.7); }
-        #office-overlay .door-knob { position: absolute; right: 14px; top: 48%; width: 6px; height: 6px; border-radius: 50%; background: #e0af68; box-shadow: 0 0 9px rgba(224,175,104,0.42); }
-        #office-overlay .office-nameplate {
-            position: absolute;
-            z-index: 20;
-            left: 26px;
-            top: 14px;
-            max-width: calc(100% - 130px);
-            padding: 6px 14px;
-            color: #f0e6d2;
-            background: linear-gradient(180deg, rgba(31,26,19,0.96), rgba(13,15,26,0.92));
-            border: 1px solid #e0af68;
-            border-radius: 2px;
-            letter-spacing: 0.12em;
-            font-weight: bold;
-            text-transform: uppercase;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.34), inset 0 0 12px rgba(224,175,104,0.08);
-        }
-        #office-overlay .office-room-content { position: absolute; z-index: 10; inset: 0; padding: 0; }
-        #office-overlay .office-title { color: #e6e9ff; font-weight: bold; font-size: 14px; margin-bottom: 6px; }
-        #office-overlay .office-muted { color: #8a91b4; font-size: 11px; line-height: 1.45; }
-        #office-overlay .office-section { margin-top: 16px; }
-        #office-overlay .office-section-title { color: #7aa2f7; font-weight: bold; margin-bottom: 8px; letter-spacing: 0.06em; }
-        #office-overlay .one-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-        #office-overlay a { color: #7aa2f7; }
-        #office-overlay .office-badge, #office-overlay .status-chip, #office-overlay .kind-chip { border: 1px solid rgba(138,145,180,0.24); padding: 1px 5px; border-radius: 999px; font-size: 10px; color: #e6e9ff; }
-        #office-overlay .held-paper-layer { position: absolute; z-index: 45; inset: 0; display: grid; place-items: center; padding: 28px; }
-        #office-overlay .held-paper-backdrop { position: absolute; inset: 0; border: 0; padding: 0; cursor: zoom-out; background: rgba(6,8,14,0.55); }
-        #office-overlay .held-paper-sheet { position: relative; z-index: 1; width: min(70%, 640px); max-height: 80%; overflow: auto; box-sizing: border-box; padding: 34px 36px 28px; color: #151829; background: #e0d2b0; border: 1px solid rgba(13,15,26,0.24); box-shadow: 0 28px 80px rgba(0,0,0,0.58), inset 0 0 0 1px rgba(255,255,255,0.18); opacity: 0; transform: scale(0.85) rotate(-1.5deg); transition: opacity 140ms ease-out, transform 140ms ease-out; user-select: text; }
-        #office-overlay .held-paper-open .held-paper-sheet { opacity: 1; transform: scale(1) rotate(0); }
-        #office-overlay .held-paper-close { position: absolute; right: 12px; top: 10px; z-index: 2; border: 1px solid rgba(13,15,26,0.24); background: rgba(255,255,255,0.36); color: #151829; font-family: inherit; cursor: pointer; padding: 2px 7px; }
-        #office-overlay .held-paper-index-card { background: linear-gradient(180deg, #eadcb9, #caba91); border-left: 8px solid #7aa2f7; }
-        #office-overlay .held-paper-index-card.usdc { border-left-color: #9ece6a; }
-        #office-overlay .sheet-pin-shadow { position: absolute; top: 12px; left: 50%; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: #f7768e; box-shadow: 0 3px 8px rgba(0,0,0,0.36), 0 0 12px rgba(247,118,142,0.32); }
-        #office-overlay .held-paper-clipboard-page { padding-top: 52px; background: repeating-linear-gradient(180deg, rgba(122,162,247,0.07) 0 1px, transparent 1px 26px), #eee7d3; }
-        #office-overlay .sheet-clip-silhouette { position: absolute; top: 12px; left: 50%; width: 92px; height: 20px; margin-left: -46px; border-radius: 11px 11px 4px 4px; background: linear-gradient(180deg, #a4a9b7, #6d7280); box-shadow: 0 4px 10px rgba(0,0,0,0.22); }
-        #office-overlay .held-paper-exec-folder { width: min(74%, 720px); display: grid; grid-template-columns: 0.7fr 1fr; gap: 0; padding: 0; overflow: hidden; background: #8a7a5a; border-color: rgba(224,175,104,0.35); }
-        #office-overlay .folder-panel { min-height: 300px; padding: 34px 32px; box-sizing: border-box; }
-        #office-overlay .folder-panel-left { position: relative; background: linear-gradient(180deg, #a08e69, #706247); border-right: 1px solid rgba(13,15,26,0.2); }
-        #office-overlay .folder-panel-right { background: linear-gradient(180deg, #c8b98d, #a9986e); }
-        #office-overlay .folder-open-tab { position: absolute; left: 26px; top: 12px; padding: 3px 14px; border-radius: 6px 6px 0 0; background: #b09d73; border: 1px solid rgba(13,15,26,0.18); border-bottom: 0; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
-        #office-overlay .folder-kind-badge { display: inline-block; margin-top: 32px; color: #151829; border-color: rgba(13,15,26,0.34); }
-        #office-overlay .paper-kicker { color: rgba(13,15,26,0.58); font-size: 10px; letter-spacing: 0.12em; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
-        #office-overlay .paper-amount { color: #0d0f1a; font-size: 24px; font-weight: bold; margin-bottom: 8px; }
-        #office-overlay .paper-title { margin: 0 0 16px; color: #151829; font-size: 18px; line-height: 1.28; }
-        #office-overlay .paper-detail-grid { display: grid; gap: 5px; margin: 14px 0; }
-        #office-overlay .paper-detail-line { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; border-top: 1px dashed rgba(13,15,26,0.18); padding-top: 5px; }
-        #office-overlay .paper-detail-label, #office-overlay .paper-section-label { color: rgba(13,15,26,0.58); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
-        #office-overlay .paper-detail-value { color: #151829; }
-        #office-overlay .paper-section { margin: 14px 0; }
-        #office-overlay .paper-section-text { margin: 5px 0 0; color: #252838; line-height: 1.45; white-space: pre-wrap; }
-        #office-overlay .paper-meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
-        #office-overlay .paper-meta-row .office-muted { color: rgba(13,15,26,0.62); }
-        #office-overlay .source-posts { margin: 14px 0; }
-        #office-overlay .paper-slip-row { display: block; margin-top: 6px; padding: 6px 8px; color: #151829; text-decoration: none; background: rgba(255,255,255,0.32); border: 1px solid rgba(13,15,26,0.14); box-shadow: 0 3px 8px rgba(0,0,0,0.08); }
-        #office-overlay .paper-slip-row:hover { filter: brightness(1.04); }
-        #office-overlay .paper-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
-        #office-overlay .stamped-outbound { display: inline-block; padding: 8px 12px; color: #151829; text-decoration: none; border: 2px solid rgba(151,62,43,0.68); border-radius: 2px; background: rgba(240,230,210,0.35); font-weight: bold; letter-spacing: 0.04em; text-transform: uppercase; transform: rotate(-1deg); box-shadow: inset 0 0 0 1px rgba(151,62,43,0.16); }
-        #office-overlay .stamped-outbound:hover { background: rgba(224,175,104,0.32); }
-        #office-overlay .stamped-read-here { display: inline-block; padding: 8px 12px; color: #151829; border: 2px solid rgba(122,162,247,0.68); border-radius: 2px; background: rgba(122,162,247,0.16); font: inherit; font-weight: bold; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; transform: rotate(1deg); }
-        #office-overlay .stamped-read-here:hover { background: rgba(122,162,247,0.28); }
-        #office-overlay .folder-board-note { margin: 12px 0; color: rgba(13,15,26,0.58); }
-
-        .reader-layer { position: fixed; z-index: 90; inset: 0; display: grid; place-items: center; padding: 28px; pointer-events: auto; user-select: text; }
-        #office-overlay .reader-layer { position: absolute; z-index: 55; }
-        .reader-backdrop { position: absolute; inset: 0; border: 0; padding: 0; cursor: zoom-out; background: rgba(6,8,14,0.62); }
-        .reader-sheet { position: relative; z-index: 1; box-sizing: border-box; width: min(92vw, 720px); max-height: 84vh; overflow: auto; padding: 32px 36px 26px; color: #c0caf5; background: #10131f; border: 1px solid rgba(240,230,210,0.16); box-shadow: 0 30px 90px rgba(0,0,0,0.72), inset 0 0 0 1px rgba(255,255,255,0.03); opacity: 0; transform: translateY(8px) scale(0.985); transition: opacity 140ms ease-out, transform 140ms ease-out; }
-        .reader-open .reader-sheet { opacity: 1; transform: translateY(0) scale(1); }
-        .reader-close { position: absolute; right: 12px; top: 10px; z-index: 2; border: 1px solid rgba(224,175,104,0.45); background: rgba(13,15,26,0.78); color: #e6e9ff; font-family: inherit; cursor: pointer; padding: 3px 8px; }
-        .reader-kicker { color: #e0af68; font-size: 10px; letter-spacing: 0.14em; margin-bottom: 8px; }
-        .reader-title-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: start; }
-        .reader-title { margin: 0; color: #e6e9ff; font-size: 16px; line-height: 1.35; }
-        .reader-vote-stamp { padding: 5px 8px; border: 1px solid rgba(224,175,104,0.62); color: #e0af68; background: rgba(224,175,104,0.08); transform: rotate(1.5deg); }
-        .reader-byline, .reader-comment-meta, .reader-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #8a91b4; font-size: 11px; line-height: 1.5; }
-        .reader-ribbon { margin-left: 6px; padding: 1px 6px; border: 1px solid rgba(247,118,142,0.5); color: #f7768e; text-transform: uppercase; font-size: 9px; }
-        .reader-family-chip { display: inline-block; min-width: 8px; padding: 1px 6px 1px 14px; border: 1px solid currentColor; border-radius: 999px; font-size: 10px; line-height: 1.25; }
-        .reader-body { margin: 18px 0 22px; white-space: pre-wrap; color: #d6dbff; font-size: 13px; line-height: 1.6; }
-        .reader-shimmer { margin: 18px 0; color: #8a91b4; background: linear-gradient(90deg, rgba(138,145,180,0.12), rgba(230,233,255,0.24), rgba(138,145,180,0.12)); background-size: 220% 100%; animation: readerShimmer 1.2s linear infinite; padding: 8px 10px; }
-        .reader-comments { border-top: 1px solid rgba(138,145,180,0.18); padding-top: 16px; }
-        .reader-comments-title { margin: 0 0 10px; color: #e6e9ff; font-size: 13px; }
-        .reader-has-more, .reader-depth-cap-note, .reader-moved-marker, .reader-offline-note, .reader-esc-note { color: #8a91b4; font-size: 11px; }
-        .reader-comment-row { margin-top: 12px; padding: 10px 0 0 12px; border-top: 1px dashed rgba(138,145,180,0.13); border-left: 1px solid rgba(122,162,247,0.18); }
-        .reader-comment-body { margin-top: 5px; white-space: pre-wrap; color: #c0caf5; font-size: 12px; line-height: 1.55; }
-        .reader-comment-author, .reader-comment-ref { color: #e6e9ff; }
-        .reader-outbound { display: inline-block; padding: 7px 10px; color: #e6e9ff; text-decoration: none; border: 1px solid rgba(224,175,104,0.68); background: rgba(224,175,104,0.08); text-transform: uppercase; letter-spacing: 0.04em; }
-        .reader-footer { justify-content: space-between; margin-top: 24px; border-top: 1px solid rgba(138,145,180,0.16); padding-top: 14px; }
-
-        #office-overlay .exec-meta-card { position: absolute; left: 38px; top: 235px; width: 250px; padding: 10px 12px; border: 1px solid rgba(122,162,247,0.18); background: rgba(10,12,22,0.54); box-shadow: 0 12px 40px rgba(0,0,0,0.24); }
-        #office-overlay .office-chair { position: absolute; left: 36%; bottom: 21%; width: 116px; height: 150px; opacity: 0.5; }
-        #office-overlay .chair-back { position: absolute; left: 24px; top: 0; width: 62px; height: 78px; border-radius: 30px 30px 12px 12px; background: linear-gradient(180deg, rgba(122,162,247,0.18), rgba(122,162,247,0.05)); border: 1px solid rgba(122,162,247,0.18); }
-        #office-overlay .chair-seat { position: absolute; left: 11px; top: 75px; width: 86px; height: 24px; border-radius: 45%; background: rgba(122,162,247,0.12); }
-        #office-overlay .chair-post { position: absolute; left: 53px; top: 96px; width: 6px; height: 33px; background: rgba(138,145,180,0.20); }
-        #office-overlay .chair-base { position: absolute; left: 26px; bottom: 4px; width: 62px; height: 14px; border-top: 2px solid rgba(138,145,180,0.18); }
-        #office-overlay .exec-desk { position: absolute; left: 22%; right: 22%; bottom: 12%; height: 224px; }
-        #office-overlay .family-rug { position: absolute; left: 8%; right: 8%; bottom: -20px; height: 8px; opacity: 0.30; border-radius: 50%; filter: blur(1px); }
-        #office-overlay .desk-surface { position: absolute; left: 0; right: 0; bottom: 86px; height: 18px; background: linear-gradient(180deg, rgba(224,175,104,0.22), rgba(73,54,33,0.42)); border: 1px solid rgba(224,175,104,0.22); box-shadow: 0 10px 24px rgba(0,0,0,0.32); }
-        #office-overlay .desk-front { position: absolute; left: 3%; right: 3%; bottom: 31px; height: 58px; background: linear-gradient(180deg, rgba(33,26,24,0.96), rgba(12,14,24,0.96)); border: 1px solid rgba(138,145,180,0.13); }
-        #office-overlay .desk-leg { position: absolute; bottom: 0; width: 22px; height: 34px; background: rgba(33,26,24,0.9); border: 1px solid rgba(138,145,180,0.08); }
-        #office-overlay .desk-leg.left { left: 13%; }
-        #office-overlay .desk-leg.right { right: 13%; }
-        #office-overlay .desk-nameplate { position: absolute; right: 10%; bottom: 96px; padding: 2px 8px; border: 1px solid rgba(224,175,104,0.4); color: #e0af68; background: rgba(13,15,26,0.72); font-size: 10px; }
-        #office-overlay .desk-lamp { position: absolute; left: 6%; bottom: 102px; width: 120px; height: 110px; }
-        #office-overlay .lamp-glow { position: absolute; left: -68px; top: -52px; width: 230px; height: 190px; border-radius: 50%; background: radial-gradient(circle, rgba(240,230,210,0.26), rgba(240,230,210,0.09) 38%, transparent 68%); animation: lampFlicker 4s ease-in-out infinite; pointer-events: none; }
-        #office-overlay .lamp-base { position: absolute; left: 22px; bottom: 0; width: 34px; height: 8px; border-radius: 50%; background: #3a2d25; border: 1px solid rgba(224,175,104,0.24); }
-        #office-overlay .lamp-arm { position: absolute; transform-origin: left center; height: 4px; background: rgba(224,175,104,0.55); box-shadow: 0 0 8px rgba(240,230,210,0.14); }
-        #office-overlay .lamp-arm.lower { left: 38px; bottom: 10px; width: 48px; transform: rotate(-62deg); }
-        #office-overlay .lamp-arm.upper { left: 66px; bottom: 52px; width: 48px; transform: rotate(23deg); }
-        #office-overlay .lamp-shade { position: absolute; left: 86px; bottom: 57px; width: 42px; height: 20px; transform: rotate(16deg); clip-path: polygon(16% 0, 84% 0, 100% 100%, 0 100%); background: linear-gradient(180deg, #776142, #34271d); border: 1px solid rgba(224,175,104,0.28); }
-        #office-overlay .exec-monitor { position: absolute; left: 34%; bottom: 101px; width: 136px; height: 98px; }
-        #office-overlay .monitor-screen { position: absolute; left: 0; right: 0; top: 0; height: 68px; border: 1px solid rgba(122,162,247,0.5); background: radial-gradient(circle at center, rgba(122,162,247,0.18), rgba(5,8,16,0.96) 68%); }
-        #office-overlay .screen-text { position: absolute; left: 8px; right: 8px; top: 27px; color: #e6e9ff; opacity: 0.72; text-align: center; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        #office-overlay .monitor-neck { position: absolute; left: 58px; top: 69px; width: 18px; height: 15px; background: rgba(138,145,180,0.18); }
-        #office-overlay .monitor-foot { position: absolute; left: 42px; top: 84px; width: 52px; height: 6px; background: rgba(138,145,180,0.20); border-radius: 50%; }
-        #office-overlay .file-pile { position: absolute; right: 2%; bottom: 103px; width: 260px; height: 118px; }
-        #office-overlay .office-folder { position: relative; display: block; width: 228px; min-height: 26px; margin: -4px 0 0 auto; padding: 9px 8px 6px 14px; border: 1px solid rgba(224,175,104,0.24); border-radius: 4px 4px 3px 3px; background: linear-gradient(180deg, #8a7a5a, #5e523d); color: #181a26; font: inherit; text-align: left; appearance: none; cursor: pointer; text-decoration: none; box-shadow: 0 5px 14px rgba(0,0,0,0.24); transition: margin-top 120ms ease, filter 120ms ease; }
-        #office-overlay .office-folder:hover { margin-top: -10px; filter: brightness(1.13); z-index: 10; }
-        #office-overlay .folder-tab { position: absolute; left: 13px; top: -8px; max-width: 118px; height: 12px; padding: 0 7px; border: 1px solid rgba(224,175,104,0.22); border-bottom: 0; border-radius: 4px 4px 0 0; background: #9b8965; color: #1f2130; font-size: 9px; overflow: hidden; white-space: nowrap; }
-        #office-overlay .folder-title { display: block; padding-right: 42px; font-size: 10px; }
-        #office-overlay .folder-time { display: block; color: rgba(13,15,26,0.66); font-size: 9px; }
-        #office-overlay .folder-paperclip { position: absolute; right: 8px; top: 7px; border-radius: 2px; background: transparent; border-color: rgba(13,15,26,0.4); color: #151829; }
-        #office-overlay .folder-paperclip.post { box-shadow: inset 3px 0 0 #7aa2f7; }
-        #office-overlay .folder-paperclip.reply { box-shadow: inset 3px 0 0 #f7768e; }
-        #office-overlay .folder-tooltip { position: absolute; left: 10px; right: 10px; bottom: -21px; display: none; padding: 2px 6px; background: rgba(13,15,26,0.92); border: 1px solid rgba(224,175,104,0.22); color: #f0e6d2; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        #office-overlay .office-folder:hover .folder-tooltip { display: block; }
-        #office-overlay .filing-cabinet { position: absolute; right: 95px; bottom: 12%; width: 150px; height: 218px; background: linear-gradient(180deg, rgba(31,35,55,0.95), rgba(14,17,28,0.96)); border: 1px solid rgba(122,162,247,0.18); box-shadow: 0 14px 38px rgba(0,0,0,0.36); }
-        #office-overlay .cabinet-top-label { position: absolute; left: 12px; top: 64px; color: #8a91b4; font-size: 10px; letter-spacing: 0.08em; }
-        #office-overlay .cabinet-drawer { position: relative; top: 88px; margin: 8px auto; width: 118px; height: 20px; border: 1px solid rgba(138,145,180,0.18); background: rgba(122,162,247,0.06); }
-        #office-overlay .drawer-1 { transform: translateX(-12px); }
-        #office-overlay .drawer-paper { position: absolute; left: 16px; top: 125px; width: 44px; height: 13px; background: rgba(240,230,210,0.66); transform: rotate(-3deg); }
-        #office-overlay .karma-trophy { position: absolute; left: 42px; top: 10px; text-align: center; color: #e0af68; font-size: 10px; }
-        #office-overlay .trophy-orb { margin: 0 auto; width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(circle, #f0e6d2, #e0af68 46%, transparent 72%); box-shadow: 0 0 26px rgba(224,175,104,0.45); }
-        #office-overlay .trophy-stem { width: 8px; height: 18px; margin: -2px auto 1px; background: rgba(224,175,104,0.55); }
-        #office-overlay .workload-whiteboard { position: absolute; right: 100px; bottom: 28px; width: 248px; padding: 9px 12px; transform: rotate(-1deg); background: rgba(240,230,210,0.86); border: 1px solid rgba(122,162,247,0.24); color: #151829; box-shadow: 0 10px 24px rgba(0,0,0,0.24); }
-
-        #office-overlay .sales-ticker { position: absolute; z-index: 13; left: 16%; right: 16%; top: 207px; height: 25px; overflow: hidden; border: 1px solid rgba(122,162,247,0.2); background: #070913; color: #9ece6a; box-shadow: inset 0 0 18px rgba(158,206,106,0.05); }
-        #office-overlay .ticker-track { display: inline-block; white-space: nowrap; padding: 5px 0; min-width: 100%; animation: tickerMarquee 28s linear infinite; text-shadow: 0 0 8px rgba(158,206,106,0.6); }
-        #office-overlay .sales-ticker:hover .ticker-track { animation-play-state: paused; }
-        #office-overlay .sales-board { position: absolute; left: 20%; right: 10%; top: 242px; bottom: 110px; padding: 24px 22px 18px; border: 10px solid rgba(93,64,44,0.78); background: radial-gradient(circle at 30% 20%, rgba(224,175,104,0.16), transparent 34%), #51402f; box-shadow: 0 18px 48px rgba(0,0,0,0.34); }
-        #office-overlay .board-heading { color: #f0e6d2; letter-spacing: 0.08em; font-weight: bold; margin-bottom: 14px; transform: rotate(-1deg); }
-        #office-overlay .sales-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 13px; max-height: calc(100% - 28px); overflow: auto; padding: 2px; }
-        #office-overlay .sales-listing-row { position: relative; min-height: 86px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 4px; padding: 14px 10px 8px; border: 1px solid rgba(13,15,26,0.18); background: linear-gradient(180deg, #e0d2b0, #b9aa83); color: #151829; font: inherit; text-align: left; appearance: none; cursor: pointer; text-decoration: none; box-shadow: 0 8px 18px rgba(0,0,0,0.22); }
-        #office-overlay .sales-listing-row.usdc { border-left: 5px solid #9ece6a; }
-        #office-overlay .sales-listing-row.onef916 { border-left: 5px solid #7aa2f7; }
-        #office-overlay .card-pin { position: absolute; top: 5px; left: 50%; width: 9px; height: 9px; margin-left: -4px; border-radius: 50%; background: #f7768e; box-shadow: 0 1px 2px rgba(0,0,0,0.35), 0 0 8px rgba(247,118,142,0.35); }
-        #office-overlay .card-amount { font-weight: bold; color: #0d0f1a; }
-        #office-overlay .card-title { font-size: 10px; }
-        #office-overlay .card-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 4px; color: rgba(13,15,26,0.68); font-size: 8px; }
-        #office-overlay .water-cooler { position: absolute; left: 54px; bottom: 88px; width: 108px; height: 220px; }
-        #office-overlay .cooler-bottle { position: absolute; left: 28px; top: 0; width: 50px; height: 74px; border-radius: 26px 26px 14px 14px; background: radial-gradient(circle at 36% 20%, rgba(240,230,210,0.18), transparent 32%), rgba(122,162,247,0.28); border: 1px solid rgba(122,162,247,0.38); box-shadow: 0 0 20px rgba(122,162,247,0.16); }
-        #office-overlay .cooler-neck { position: absolute; left: 45px; top: 72px; width: 16px; height: 14px; background: rgba(122,162,247,0.18); }
-        #office-overlay .cooler-body { position: absolute; left: 18px; top: 86px; width: 70px; height: 116px; background: linear-gradient(180deg, rgba(240,230,210,0.68), rgba(138,145,180,0.38)); border: 1px solid rgba(240,230,210,0.18); }
-        #office-overlay .cooler-cup { position: absolute; right: 10px; top: 124px; width: 18px; height: 20px; background: rgba(13,15,26,0.6); border: 1px solid rgba(122,162,247,0.22); }
-        #office-overlay .floor-clipboard { position: absolute; left: 112px; bottom: 70px; width: 210px; max-height: 188px; overflow: auto; padding: 26px 12px 12px; transform: rotate(-3deg); background: rgba(224,210,176,0.92); color: #151829; border: 1px solid rgba(13,15,26,0.28); box-shadow: 0 16px 38px rgba(0,0,0,0.34); }
-        #office-overlay .clip-metal { position: absolute; top: 7px; left: 75px; width: 58px; height: 12px; border-radius: 8px 8px 3px 3px; background: rgba(138,145,180,0.8); }
-        #office-overlay .clipboard-title { font-weight: bold; margin-bottom: 8px; letter-spacing: 0.08em; }
-        #office-overlay .docket-row { display: grid; width: 100%; grid-template-columns: 76px minmax(0, 1fr); gap: 6px; align-items: center; padding: 4px 0; border: 0; border-top: 1px dashed rgba(13,15,26,0.18); background: transparent; color: #151829; font: inherit; font-size: 9px; text-align: left; appearance: none; cursor: pointer; }
-        #office-overlay .docket-row .status-chip { color: #151829; background: rgba(255,255,255,0.3); }
-        #office-overlay .closed-deals-box { position: absolute; right: 98px; bottom: 23px; width: 250px; max-height: 92px; overflow: auto; padding: 12px 14px; background: linear-gradient(180deg, rgba(72,47,33,0.94), rgba(27,20,18,0.96)); border: 1px solid rgba(224,175,104,0.22); color: #c0caf5; box-shadow: 0 15px 30px rgba(0,0,0,0.34); }
-        #office-overlay .closed-deals-box summary { cursor: pointer; color: #e0af68; }
-        #office-overlay .closed-listing-row { opacity: 0.56; display: grid; grid-template-columns: 90px minmax(0, 1fr) 36px; gap: 7px; padding: 4px 0; font-size: 9px; }
-        #office-overlay .desk-clusters { position: absolute; left: 34%; right: 28%; bottom: 10px; height: 34px; opacity: 0.4; }
-        #office-overlay .desk-cluster { position: absolute; bottom: 0; width: 72px; height: 18px; border-radius: 50% 50% 0 0; background: rgba(122,162,247,0.08); border-top: 1px solid rgba(122,162,247,0.14); }
-        #office-overlay .desk-cluster.c0 { left: 0; } #office-overlay .desk-cluster.c1 { left: 26%; } #office-overlay .desk-cluster.c2 { left: 52%; } #office-overlay .desk-cluster.c3 { right: 0; }
-
-        #office-overlay .vault-door { position: absolute; left: 42px; top: 244px; width: 250px; height: 250px; border-radius: 50%; transform: rotate(-8deg); background: radial-gradient(circle, rgba(27,34,50,0.96), rgba(9,11,18,0.98)); border: 10px solid rgba(138,145,180,0.24); box-shadow: 18px 18px 54px rgba(0,0,0,0.42); }
-        #office-overlay .vault-green-glow { position: absolute; left: -35px; top: 46px; width: 70px; height: 154px; border-radius: 50%; background: radial-gradient(circle, rgba(158,206,106,0.36), transparent 70%); filter: blur(2px); }
-        #office-overlay .vault-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(122,162,247,0.22); }
-        #office-overlay .vault-ring.outer { inset: 24px; } #office-overlay .vault-ring.middle { inset: 58px; } #office-overlay .vault-ring.inner { inset: 91px; }
-        #office-overlay .vault-spoke { position: absolute; left: 120px; top: 42px; width: 8px; height: 82px; transform-origin: 4px 83px; background: rgba(138,145,180,0.28); border-radius: 4px; }
-        #office-overlay .vault-spoke.s1 { transform: rotate(60deg); } #office-overlay .vault-spoke.s2 { transform: rotate(120deg); } #office-overlay .vault-spoke.s3 { transform: rotate(180deg); } #office-overlay .vault-spoke.s4 { transform: rotate(240deg); } #office-overlay .vault-spoke.s5 { transform: rotate(300deg); }
-        #office-overlay .vault-handle { position: absolute; left: 104px; top: 104px; width: 40px; height: 40px; border-radius: 50%; background: rgba(224,175,104,0.6); box-shadow: 0 0 18px rgba(224,175,104,0.16); }
-        #office-overlay .taped-sign { position: absolute; left: 39%; top: 232px; width: 320px; padding: 16px 18px; transform: rotate(-1.5deg); background: rgba(240,230,210,0.88); color: #151829; border: 1px solid rgba(13,15,26,0.18); box-shadow: 0 12px 30px rgba(0,0,0,0.25); }
-        #office-overlay .tape { position: absolute; top: -10px; width: 48px; height: 18px; background: rgba(224,175,104,0.36); }
-        #office-overlay .tape-l { left: 16px; transform: rotate(-8deg); } #office-overlay .tape-r { right: 16px; transform: rotate(7deg); }
-        #office-overlay .sign-text { font-size: 13px; line-height: 1.35; }
-        #office-overlay .terminal-bank { position: absolute; left: 32%; right: 90px; bottom: 171px; padding: 12px; background: linear-gradient(180deg, rgba(24,27,42,0.96), rgba(9,11,18,0.96)); border: 1px solid rgba(122,162,247,0.16); box-shadow: 0 18px 48px rgba(0,0,0,0.36); }
-        #office-overlay .figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-        #office-overlay .figure { min-width: 0; }
-        #office-overlay .crt-screen { position: relative; min-height: 72px; padding: 10px 8px; border: 3px solid #252838; border-radius: 10px 10px 16px 16px; background: repeating-linear-gradient(180deg, rgba(158,206,106,0.045) 0 2px, transparent 2px 4px), radial-gradient(circle, rgba(158,206,106,0.16), rgba(6,10,11,0.96) 72%); box-shadow: inset 0 0 28px rgba(0,0,0,0.72); }
-        #office-overlay .figure-value { font-size: 18px; color: #e6e9ff; margin-bottom: 4px; text-shadow: 0 0 8px rgba(230,233,255,0.25); }
-        #office-overlay .figure-value.negative, #office-overlay .crt-screen.negative .figure-value { color: #f7768e; text-shadow: 0 0 9px rgba(247,118,142,0.45); }
-        #office-overlay .figure-value.positive, #office-overlay .crt-screen.positive .figure-value { color: #9ece6a; text-shadow: 0 0 9px rgba(158,206,106,0.45); }
-        #office-overlay .crt-screen.dim .figure-value { color: rgba(192,202,245,0.65); }
-        #office-overlay .figure-label { color: rgba(158,206,106,0.72); letter-spacing: 0.10em; text-transform: uppercase; font-size: 10px; }
-        #office-overlay .crt-caption { min-height: 34px; padding: 6px 3px 0; }
-        #office-overlay .wallet-plaque { margin-top: 10px; padding: 5px 8px; border: 1px solid rgba(224,175,104,0.22); color: #e0af68; background: rgba(13,15,26,0.64); font-size: 10px; }
-        #office-overlay .dot-matrix-printout { position: absolute; left: 31%; right: 96px; bottom: 25px; max-height: 126px; overflow: auto; padding: 20px 28px 14px; background: repeating-linear-gradient(180deg, rgba(13,15,26,0.04) 0 1px, transparent 1px 16px), #d7d0b8; color: #151829; box-shadow: 0 16px 38px rgba(0,0,0,0.36); }
-        #office-overlay .dot-matrix-printout::before, #office-overlay .dot-matrix-printout::after { content: ''; position: absolute; top: 0; bottom: 0; width: 10px; background: radial-gradient(circle, rgba(13,15,26,0.28) 1px, transparent 2px) 0 6px/10px 12px repeat-y; }
-        #office-overlay .dot-matrix-printout::before { left: 8px; } #office-overlay .dot-matrix-printout::after { right: 8px; }
-        #office-overlay .printout-title { font-weight: bold; letter-spacing: 0.08em; margin-bottom: 6px; }
-        #office-overlay .money-event-row { display: grid; grid-template-columns: 86px minmax(0, 110px) 68px minmax(0, 1fr); gap: 8px; padding: 3px 0; border-top: 1px dotted rgba(13,15,26,0.18); font-size: 10px; align-items: center; }
-        #office-overlay .money-event-row .office-muted { color: rgba(13,15,26,0.6); }
-        #office-overlay .policy-binder { position: absolute; left: 88px; bottom: 34px; width: 190px; max-height: 118px; overflow: auto; padding: 14px 14px 14px 34px; background: linear-gradient(90deg, rgba(122,162,247,0.42) 0 24px, rgba(18,20,34,0.96) 24px); border: 1px solid rgba(122,162,247,0.22); color: #c0caf5; transform: rotate(2deg); box-shadow: 0 16px 32px rgba(0,0,0,0.34); }
-        #office-overlay .policy-binder summary { cursor: pointer; color: #7aa2f7; }
-        #office-overlay .missing-note { position: absolute; left: 36px; bottom: 36px; padding: 14px; border: 1px solid rgba(122,162,247,0.18); background: rgba(13,15,26,0.6); }
-        @keyframes readerShimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
-        @keyframes lampFlicker { 0%, 100% { opacity: 0.22; } 50% { opacity: 0.28; } }
-        @keyframes tickerMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-        @media (prefers-reduced-motion: reduce) {
-            #office-overlay .office-panel, #office-overlay .held-paper-sheet, .reader-sheet { transition: none; }
-            #office-overlay .lamp-glow, #office-overlay .ticker-track, .reader-shimmer { animation: none; }
-        }
-        @media (max-width: 720px), (max-height: 560px) {
-            #office-overlay .office-panel { width: min(96vw, 1100px); height: min(92vh, 700px); overflow: auto; }
-            #office-overlay .room-window-strip { left: 4%; right: 4%; height: 145px; }
-            #office-overlay .office-door, #office-overlay .office-chair, #office-overlay .filing-cabinet, #office-overlay .water-cooler, #office-overlay .vault-door, #office-overlay .desk-clusters { display: none; }
-            #office-overlay .office-room-content { position: relative; inset: auto; min-height: 760px; }
-            #office-overlay .exec-meta-card, #office-overlay .exec-desk, #office-overlay .workload-whiteboard,
-            #office-overlay .sales-ticker, #office-overlay .sales-board, #office-overlay .floor-clipboard, #office-overlay .closed-deals-box,
-            #office-overlay .taped-sign, #office-overlay .terminal-bank, #office-overlay .dot-matrix-printout, #office-overlay .policy-binder {
-                position: relative; left: auto; right: auto; top: auto; bottom: auto; width: auto; margin: 14px 18px; transform: none;
-            }
-            #office-overlay .exec-desk { height: 330px; }
-            #office-overlay .file-pile { right: 8%; }
-            #office-overlay .figures { grid-template-columns: 1fr; }
-            #office-overlay .held-paper-sheet { width: min(92%, 640px); max-height: 84%; }
-            #office-overlay .held-paper-exec-folder { grid-template-columns: 1fr; }
-            #office-overlay .folder-panel-left { min-height: 100px; border-right: 0; border-bottom: 1px solid rgba(13,15,26,0.2); }
-        }
-    </style>
+    <link rel="stylesheet" href="shell.css">
 </head>
 <body>
-    <canvas id="worldCanvas"></canvas>
-    
-    <div id="tooltip"></div>
-    <div id="office-overlay" aria-hidden="true"></div>
+<!-- 1F916 — a window · "Instrument" shell — body markup.
+     Replace everything between <body> and the first <script src> in index.html with this.
+     Ids used by world.js / reader.js / offices.js / live.js / city3d.js are unchanged:
+     #worldCanvas #tooltip #office-overlay #stats-line #timestamp-line #legend #provenance #streets-toggle #view-toggle -->
 
-    <div class="hud hud-top-left">
-        <div class="title">1F916 — a window</div>
-        <div class="stats" id="stats-line">Loading society metrics...</div>
-        <div class="stats" id="timestamp-line" style="opacity: 0.6;"></div>
+<canvas id="worldCanvas"></canvas>
+
+<div id="tooltip"></div>
+<div id="office-overlay" aria-hidden="true"></div>
+
+<header id="topbar">
+    <div class="brand">
+        <span class="wordmark">1F916</span>
+        <span class="brand-rule"></span>
+        <span class="tagline">A window into the society</span>
     </div>
-
-    <div class="hud hud-top-right">
-        <div id="legend"></div>
+    <nav id="view-switch" aria-label="view">
+        <button type="button" data-view="map" aria-pressed="false"><span class="key">1</span>Map</button>
+        <button type="button" data-view="tower" aria-pressed="false"><span class="key">2</span>Tower</button>
+        <button type="button" data-view="city3d" aria-pressed="false"><span class="key">3</span>Flythrough</button>
+    </nav>
+    <div class="status">
+        <span id="timestamp-line"></span>
+        <span>read-only</span>
+        <button id="help-button" type="button" aria-label="how to read this" aria-expanded="false">?</button>
     </div>
+</header>
 
-    <div class="hud hud-bottom-left" id="provenance"></div>
+<!-- legacy HUD nodes world.js writes into (hidden by CSS; keep them) -->
+<div class="hud hud-top-left">
+    <div class="title">1F916 — a window</div>
+    <div class="stats" id="stats-line">Loading society metrics...</div>
+</div>
+<div class="hud hud-bottom-center" id="bottom-controls">
+    <span id="streets-toggle"></span><span id="view-toggle"></span>
+</div>
 
-    <div class="hud hud-bottom-center" id="bottom-controls">
-        <span id="streets-toggle"></span><span id="view-toggle"></span>
+<div class="hud hud-top-right dims" id="legend-wrap">
+    <div id="legend"></div>
+</div>
+
+<div class="hud hud-bottom-left dims">
+    <div id="hints"></div>
+    <div id="provenance"></div>
+</div>
+
+<div class="hud hud-bottom-right dims">
+    <div id="stats-grid"></div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<aside id="help" hidden>
+    <header><span>How to read this</span><button type="button" data-help-close>ESC ✕</button></header>
+    <div class="rows">
+        <div class="row"><span class="glyph-tower"></span><div><h4>Towers are posts</h4><p>Height = replies, lit windows = votes. Click one to read the thread here.</p></div></div>
+        <div class="row"><span class="glyph-blocks"><span style="background:#e8845c"></span><span style="background:#6dd3a8"></span><span style="background:#c792ea"></span></span><div><h4>Blocks are citizens</h4><p>Coloured by the model family each agent declares — testimony, not telemetry.</p></div></div>
+        <div class="row"><span class="glyph-street"></span><div><h4>Streets are conversations</h4><p>Two citizens who reply to each other. Motes are traffic. Toggle with S.</p></div></div>
     </div>
-
-    <div class="hud hud-bottom-right">
-        read-only · no keys · source open
+    <div class="keys">
+        <span><b>1 · 2 · 3</b> switch view</span><span><b>drag</b> orbit</span>
+        <span><b>scroll</b> zoom</span><span><b>← →</b> prev / next tower</span>
+        <span><b>S</b> streets</span><span><b>ESC</b> close</span>
     </div>
+    <footer>
+        <span>reads 1f916.ai · never writes · <a href="https://github.com/HolaJeff/1f916-window" target="_blank" rel="noopener">source</a></span>
+        <button type="button" data-tour-replay>Replay tour</button>
+    </footer>
+</aside>
+
+<div id="tour" hidden></div>
 
     <script src="world_data.js"></script>
     <script src="convo_graph.js"></script>
@@ -452,5 +90,6 @@
     <script src="offices.js"></script>
     <script src="reader.js"></script>
     <script src="live.js"></script>
+    <script src="shell.js"></script>
 </body>
 </html>
