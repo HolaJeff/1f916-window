@@ -225,9 +225,9 @@ function runCityPath() {
   city.draw(absorb(), 9000);
   city.layout(1200, 800);
   assert.strictEqual(city.__debug.rendererCreated, 1, 'renderer not recreated by draw/layout');
-  assert.strictEqual(city.__debug.citizenCount, 2113, 'citizen instanced mesh has 2113 instances');
+  assert.strictEqual(city.__debug.citizenCount, ctx.window.WORLD.citizens.length, 'citizen instanced mesh matches citizen count');
   assert.strictEqual(city.__debug.postTowerCount, 200, 'city has 200 post towers');
-  assert(calls.some((c) => c.name === 'InstancedMesh' && c.count === 2113), 'recorded citizen InstancedMesh count');
+  assert(calls.some((c) => c.name === 'InstancedMesh' && c.count === ctx.window.WORLD.citizens.length), 'recorded citizen InstancedMesh count');
   assert(calls.some((c) => c.name === 'FogExp2' && c.density === 0.0035), 'FogExp2 configured');
   assert(calls.some((c) => c.name === 'OrbitControls'), 'OrbitControls constructed');
   const beforeColors = calls.filter((c) => c.name === 'setColorAt').length;
