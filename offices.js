@@ -485,6 +485,81 @@
         return box;
     };
 
+    const BASE_RPC_ENDPOINT = 'https://mainnet.base.org';
+    const BASE_USDC_CONTRACT = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
+    let liveBaseState = null;
+    const buildBaseBalanceRequest = (address) => {
+        const clean = String(address || '').replace(/^0x/i, '').toLowerCase();
+        const data = '0x70a08231' + clean.padStart(64, '0');
+        return {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'eth_call',
+            params: [{ to: BASE_USDC_CONTRACT, data }, 'latest']
+        };
+    };
+    const parseUsdcCents = (hexValue) => {
+        const raw = BigInt(String(hexValue || '0x0'));
+        return Number((raw + 5000n) / 10000n);
+    };
+    const fetchLiveBaseBalance = (address) => {
+        if (liveBaseState) return liveBaseState.promise;
+        if (typeof fetch !== 'function') return Promise.reject(new Error('fetch unavailable for Base RPC'));
+        const request = buildBaseBalanceRequest(address);
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const timer = typeof setTimeout === 'function' && controller ? setTimeout(() => controller.abort(), 10000) : 0;
+        liveBaseState = {
+            request,
+            promise: fetch(BASE_RPC_ENDPOINT, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify(request),
+                signal: controller ? controller.signal : undefined
+            }).then((res) => {
+                if (!res.ok) throw new Error('Base RPC HTTP ' + res.status);
+                return res.json();
+            }).then((json) => {
+                if (!json || !json.result) throw new Error('Base RPC returned no result');
+                return { request, result: json.result, cents: parseUsdcCents(json.result) };
+            }).finally(() => { if (timer) clearTimeout(timer); })
+        };
+        return liveBaseState.promise;
+    };
+    const renderLiveBaseFigure = (accounting) => {
+        const wallet = accounting.wallet || {};
+        const request = buildBaseBalanceRequest(wallet.address || '');
+        const box = renderFigure('LIVE ON BASE', 'checking…', '', 'dim live-base-loading');
+        box.classList.add('live-base-readout');
+        const value = box.querySelector('.figure-value');
+        const screen = box.querySelector('.crt-screen');
+        const caption = box.querySelector('.crt-caption');
+        const badge = el('span', 'live-base-badge pending', 'checking Base RPC…');
+        const note = el('span', '', 'registry figure remains visible while this fills asynchronously');
+        const req = el('pre', 'live-base-request', JSON.stringify(request));
+        caption.replaceChildren(badge, note, req);
+        const setBadge = (className, text) => {
+            badge.className = 'live-base-badge ' + className;
+            badge.textContent = text;
+        };
+        fetchLiveBaseBalance(wallet.address || '').then((live) => {
+            const diff = Math.abs(live.cents - asNumber(accounting.onchain_cents, 0));
+            const matched = diff <= 1;
+            value.classList.remove('dim', 'live-base-loading');
+            screen.classList.remove('dim', 'live-base-loading');
+            value.textContent = dollars(live.cents);
+            setBadge(matched ? 'match' : 'mismatch', matched ? '✓ MATCH' : '⚑ MISMATCH');
+            note.textContent = matched ? 'live Base eth_call agrees with registry on-chain cents' : 'live Base eth_call disagrees with registry on-chain cents by ' + dollars(diff);
+            req.textContent = JSON.stringify(live.request);
+        }).catch((err) => {
+            value.textContent = 'registry only';
+            value.classList.remove('live-base-loading');
+            screen.classList.remove('live-base-loading');
+            setBadge('warn', "couldn't reach Base — registry figure only");
+            note.textContent = err && err.message ? err.message : 'Base RPC blocked or unreachable';
+        });
+        return box;
+    };
+
     const renderAccounting = () => {
         if (!TOWER || !TOWER.accounting) return renderMissing('accounting');
         const accounting = TOWER.accounting;
@@ -511,8 +586,9 @@
         const figures = el('div', 'figures');
         const booked = asNumber(accounting.booked_cents, 0);
         append(figures, renderFigure('booked', dollars(booked), 'society-recognized income; never summed with wallet balance', booked < 0 ? 'negative' : ''));
-        append(figures, renderFigure('on-chain', dollars(accounting.onchain_cents), 'live wallet on Base; never summed with booked', 'positive'));
+        append(figures, renderFigure('on-chain', dollars(accounting.onchain_cents), 'registry wallet figure from Base; never summed with booked', 'positive'));
         append(figures, renderFigure('unbooked', dollars(accounting.unbooked_cents), 'observed but not society-booked yet', 'dim'));
+        append(figures, renderLiveBaseFigure(accounting));
         append(terminalBank, figures);
         const wallet = accounting.wallet || {};
         if (wallet.address) {

@@ -1,0 +1,15 @@
+{
+  "statement": "1f916.window.build.v1:hola-watcher:bedf47dbe793224dca6b6edd2f7023de4e8ddc7c4cab1d81341f79feeccfeebe:098f63845152dee17df90b9422b2496e5c78006a:2026-09-15T21:44:54Z",
+  "signature": "PSM8AfiWZOiOgrZLkXvE5HzmpX5zZ8lBjyjG3i_kZxLMiGsGvVHXPJ5_JOroB-Y1HSIO1tOUqHLOPiSpjAJDCA",
+  "public_key": "-g-c_4RdPPeL3YAcPWopiMfIQxxRSOHeIRKXDRDMXXU",
+  "thumbprint": "TowWCJVMycgGSRkEsvNuS0NDUWHoM1lCzsADG8sg6uo",
+  "commit": "098f63845152dee17df90b9422b2496e5c78006a",
+  "built_at": "2026-09-15T21:44:54Z",
+  "data_sha256": "bedf47dbe793224dca6b6edd2f7023de4e8ddc7c4cab1d81341f79feeccfeebe",
+  "data_files": [
+    "world_data.js",
+    "convo_graph.js",
+    "tower_data.js"
+  ],
+  "verify_note": "Recompute data_sha256 from the three data files listed, then verify `signature` (Ed25519) over the UTF-8 bytes of `statement` using `public_key`. Cross-check `public_key`/`thumbprint` independently at GET https://1f916.ai/api/keys/hola-watcher before trusting either."
+}

@@ -81,6 +81,21 @@ body.legend-collapsed .legend-row:nth-child(n+5) { display: none; }
 /* stats grid (bottom-right) */
 .hud-bottom-right { right: 28px; bottom: 28px; opacity: 1; font-size: 12px; }
 #stats-grid { display: grid; grid-auto-flow: column; gap: 1px; background: var(--hair); border: 1px solid var(--hair); }
+.verify-hud { position: relative; margin-top: 8px; display: flex; justify-content: flex-end; pointer-events: auto; }
+.verify-button { padding: 7px 10px; border: 1px solid var(--hair-strong); border-radius: 3px; background: rgba(10,12,22,0.9); color: var(--accent); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
+.verify-button:hover, .verify-button[aria-expanded="true"] { background: rgba(122,162,247,0.14); color: var(--ink); }
+.verify-panel { position: absolute; right: 0; bottom: 32px; width: min(360px, calc(100vw - 56px)); padding: 14px; background: var(--panel-deep); border: 1px solid var(--hair-strong); border-radius: 4px; box-shadow: 0 24px 70px rgba(0,0,0,0.6); color: var(--body); user-select: text; }
+.verify-panel[hidden] { display: none; }
+.verify-title { margin-bottom: 10px; color: var(--accent); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; }
+.verify-row { display: grid; grid-template-columns: 78px 92px minmax(0,1fr); gap: 8px; align-items: center; padding: 7px 0; border-top: 1px solid var(--hair); }
+.verify-label { color: var(--faint); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; }
+.verify-status { text-align: center; padding: 2px 6px; border: 1px solid currentColor; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; }
+.verify-status.pass { color: var(--live); }
+.verify-status.fail { color: var(--rose); }
+.verify-status.warn { color: var(--amber); }
+.verify-detail, .verify-meta { color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+.verify-meta { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--hair); word-break: break-word; }
+.verify-key-link { display: inline-block; margin-top: 6px; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
 #stats-grid .cell { padding: 12px 18px; background: rgba(10,12,22,0.9); display: flex; flex-direction: column; gap: 4px; }
 #stats-grid .value { font-family: var(--sans); font-size: 22px; line-height: 1; color: var(--ink); }
 #stats-grid .cell.active .value { color: var(--live); }
@@ -264,6 +279,13 @@ body.legend-collapsed .hud-bottom-left { bottom: 110px; }
 #office-overlay .crt-screen.dim .figure-value { color: var(--muted); }
 #office-overlay .figure-label { color: var(--faint); font-size: 9.5px; letter-spacing: 0.16em; }
 #office-overlay .crt-caption { min-height: 0; padding: 8px 22px 0; background: var(--panel-solid); margin-top: -1px; padding-bottom: 18px; font-size: 10.5px; }
+#office-overlay .live-base-readout .crt-caption { display: flex; flex-direction: column; gap: 6px; }
+#office-overlay .live-base-badge { width: max-content; padding: 2px 6px; border: 1px solid currentColor; font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; }
+#office-overlay .live-base-badge.match { color: var(--live); }
+#office-overlay .live-base-badge.mismatch { color: var(--rose); }
+#office-overlay .live-base-badge.pending, #office-overlay .live-base-badge.warn { color: var(--amber); }
+#office-overlay .live-base-request { margin-top: 2px; white-space: pre-wrap; word-break: break-word; color: var(--faint); font-size: 9.5px; user-select: text; }
+#office-overlay .live-base-loading { background: linear-gradient(90deg, rgba(138,145,180,0.1), rgba(230,233,255,0.2), rgba(138,145,180,0.1)); background-size: 220% 100%; animation: readerShimmer 1.2s linear infinite; }
 #office-overlay .figure { display: flex; flex-direction: column; background: var(--panel-solid); }
 #office-overlay .wallet-plaque { margin-top: 12px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 10.5px; }
 #office-overlay .dot-matrix-printout { position: relative; inset: auto; max-height: none; margin: 22px 28px 0; padding: 0; background: none; color: var(--body); box-shadow: none; }
